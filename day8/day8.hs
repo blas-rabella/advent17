@@ -7,7 +7,6 @@ import Prelude hiding (LT,GT)
 import Data.Void
 import Control.Monad (void, when)
 import Control.Monad.State.Strict
-
 import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Map.Strict as M
 
