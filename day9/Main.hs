@@ -9,6 +9,7 @@ main = do
 
 data Solution = Solution{depth :: Int, sum :: Int, isGarbage :: Bool, skipChar :: Bool, garbage :: Int} deriving (Show)
 
+initial :: Solution
 initial = Solution{depth=1, sum=0, isGarbage=False, skipChar=False, garbage = 0}
 
 func :: Solution -> Char -> Solution
