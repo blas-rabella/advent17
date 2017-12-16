@@ -10,7 +10,7 @@ import Control.Monad.State.Strict
 import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Map.Strict as M
 
-data Instruction = Instruction{var::String, op::Op, varCond::String, cmp::Cmp, valCond::Int} deriving (Show)
+data Instruction = Instruction{var::String, op::Op, varCond::String, cmp::(Int -> Int -> Bool), valCond::Int}-- deriving (Show)
 
 data Op = Inc Int | Dec Int deriving (Show, Eq)
 data Cmp = E | LT | GT | LTE | GTE | NE deriving (Show)
@@ -34,15 +34,15 @@ sc = L.space space1 lineCmnt blockCmnt
     lineCmnt  = L.skipLineComment "//"
     blockCmnt = L.skipBlockComment "/*" "*/"
 
-parseCmp :: Parser Cmp
+parseCmp :: Parser (a->a->Bool)
 parseCmp = parseE <|> parseNE <|> parseLTE <|> parseGTE <|> parseLT <|> parseGT
   where
-    parseE = string "==" >> return E
-    parseLT = string "<" >> return LT
-    parseGT = string ">" >> return GT
-    parseNE = string "!=" >> return NE
-    parseLTE = string "<=" >> return LTE
-    parseGTE = string ">=" >> return GTE
+    parseE = string "==" >> return (==)
+    parseLT = string "<" >> return (<)
+    parseGT = string ">" >> return (>)
+    parseNE = string "!=" >> return (/=)
+    parseLTE = string "<=" >> return (<=)
+    parseGTE = string ">=" >> return (>=)
 
 parseOp = do
   op <- many letterChar <* space
@@ -58,25 +58,22 @@ signedInteger = L.signed sc L.decimal
 
 type Computer = State (M.Map String Int)
 
-evalCmp :: String -> Cmp -> Int -> Computer Bool
+evalCmp :: String -> (a->a->Bool) -> Int -> Computer Bool
 evalCmp var cmp val = do
   varVal <- gets (M.findWithDefault 0 var)
-  return $ (getCmp cmp) varVal val
+  return $ cmp varVal val
 
 evalOp :: String -> Op -> Computer ()
-evalOp var (Inc val) = do
+evalOp var op = do
   varVal <- gets (M.findWithDefault 0 var)
   max' <- gets (M.findWithDefault minBound "Max allocated")
-  let newVal = varVal + val
+  let newVal = getOp' op varVal
   modify (M.insert var newVal)
   modify (M.insert "Max allocated" (max max' newVal))
 
-evalOp var (Dec val) = do
-  varVal <- gets (M.findWithDefault 0 var)
-  max' <- gets (M.findWithDefault minBound "Max allocated")
-  let newVal = varVal - val
-  modify (M.insert var newVal)
-  modify (M.insert "Max allocated" (max max' newVal))
+getOp' :: Op -> Int -> Int
+getOp' (Inc a) b = b + a
+getOp' (Dec a) b = b - a
 
 interpret Instruction{..} = do
   cond <- evalCmp varCond cmp valCond
